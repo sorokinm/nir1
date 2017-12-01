@@ -14,4 +14,7 @@ block L(block text);
 block R_rev(block text);
 block L_rev(block text);
 
+void F(block key, block* parts);
+
+block 
 #endif //KUZNECHIK_HEADERS_H

@@ -70,3 +70,9 @@ block L_rev(block text) {
     return text;
 }
 
+void F(block key, block* parts){
+    block tmp = parts[0];
+    parts[0] = key_add(parts[1],L(substitution(key_add(key,parts[0]),0)));
+    parts[1] = tmp;
+}
+
