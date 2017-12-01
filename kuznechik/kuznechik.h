@@ -2,8 +2,8 @@
 #define KUZNECHIK_HEADERS_H
 
 typedef struct {
-    long left;
-    long right;
+    unsigned long left;
+    unsigned long right;
 } block;
 
 block key_add(block key, block text);

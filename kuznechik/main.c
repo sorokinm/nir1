@@ -1,12 +1,14 @@
 #include <stdio.h>
 
 #include "kuznechik.h"
+#include "galois_arithmetics.h"
 
 int main() {
     printf("Hello, World!\n");
-    block text = {.left = 0x9400000000000000, .right = 0x0000000000000001};
+    block text = {.left = 0x0e93691a0cfc6040, .right = 0x8b7b68f66b513c13};
 
-    block subs_text = R(text);
+    block subs_text = L_rev(L(text));
     printf("%#016lx\t%#016lx\n", subs_text.left, subs_text.right);
+    printf("%d\n", gmul(1, 1) ^ gmul(148, 0x94));
     return 0;
 }

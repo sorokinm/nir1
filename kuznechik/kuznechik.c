@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "sbox.h"
 #include "kuznechik.h"
 #include "galois_arithmetics.h"
@@ -29,7 +30,7 @@ block substitution(block text, int is_inverse) {
 }
 
 unsigned char l(block text) {
-    return gmul(148, (unsigned char)(text.left >> 56)) ^ gmul(32, text.left >> 48) ^ gmul(133, text.left >> 40) ^
+    return  gmul(148, (unsigned char)(text.left >> 56)) ^ gmul(32, text.left >> 48) ^ gmul(133, text.left >> 40) ^
     gmul(16, text.left >> 32) ^ gmul(194, text.left >> 24) ^ gmul(192, text.left >> 16) ^
     gmul(1, text.left >> 8) ^ gmul(251, text.left)  ^ gmul(1, text.right >> 56) ^
     gmul(192, text.right >> 48) ^ gmul(194, text.right >> 40) ^ gmul(16, text.right >> 32) ^
@@ -56,9 +57,9 @@ block R_rev(block text) {
     unsigned char a15 = (unsigned char)(text.left >> 56);
     text.left <<= 8;
     text.left += text.right >> 56;
-    text.right = text.right << 8 + a15;
+    text.right = (text.right << 8) | a15;
     unsigned  char l_res = l(text);
-    text.right = (text.right >> 8) << 8 + l_res;
+    text.right = (text.right & 0xffffffffffffff00) | l_res;
     return  text;
 }
 
