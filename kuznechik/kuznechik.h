@@ -13,8 +13,12 @@ block R(block text);
 block L(block text);
 block R_rev(block text);
 block L_rev(block text);
+block encrypt(block text, block* keys, unsigned round_num);
+block decrypt(block text, block* keys, unsigned round_num);
 
 void F(block key, block* parts);
+block* generate_round_keys(block left_master, block right_master, unsigned rnum);
+block to_block(unsigned long left, unsigned long right);
 
-block 
+
 #endif //KUZNECHIK_HEADERS_H
