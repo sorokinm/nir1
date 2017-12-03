@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "sbox.h"
 #include "kuznechik.h"
 #include "galois_arithmetics.h"
@@ -95,6 +96,25 @@ block decrypt(block text, block* keys, unsigned round_num) {
 block to_block(unsigned long left, unsigned long right) {
     block res = {.left = left, .right = right};
     return res;
+}
+
+block get_random_key() {
+    block key = {.left = lrand(), .right = lrand()};
+    return key;
+}
+
+unsigned long lrand() {
+    unsigned long long r = 0;
+    srand(time(NULL));
+    for (int i = 0; i < 5; ++i) {
+        r = (r << 15) | (rand() & 0x7FFF);
+    }
+
+    return r & 0xFFFFFFFFFFFFFFFFUL;
+}
+
+void print_block(block text) {
+    printf("%016lx%016lx\n",text.left,text.right);
 }
 
 block C (unsigned long i) {

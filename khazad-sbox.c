@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-unsigned char sbox(unsigned char a);
+
 unsigned gmul(unsigned a, unsigned b);
 unsigned gadd(unsigned a, unsigned b);
 
@@ -36,9 +36,14 @@ const unsigned char matrix[8][8] = {
 		0x7, 0xB, 0x8, 0x6, 0x5, 0x4, 0x3, 0x1
 };
 
-unsigned char sbox(unsigned char a)
-{
- return khazad_sbox_table[a];
+unsigned long sbox(unsigned long a) {
+	unsigned char text[8] = {0};
+	unsigned long* p = text;
+	*p = a;
+	for(int j = 0; j < 8; ++j) {
+		text[j] = khazad_sbox_table[text[j]];
+	}
+ 	return *p;
 }
 
 void mult_matrix(unsigned char mult[8][8]) {
@@ -51,93 +56,151 @@ void mult_matrix(unsigned char mult[8][8]) {
 	}
 }
 
-long theta(long vector) {
+// linear transform of khazad
+unsigned long theta(unsigned long vector) {
 	unsigned char text[8] = {0};
 	unsigned char result[8] = {0};
-	long* p = text;
+	unsigned long* p = text;
 	*p = vector;
 
 	for (int i = 0; i < 8; ++i) { // column
 		for (int j = 0; j < 8; ++j) { // row
-			result[i] = gadd(gmul(matrix[j][i], text[j]), result[i]);
+			result[i] = gadd(gmul(matrix[j][i], text[7 - j]), result[i]); // 7 - j because inverse order of loading
 		}
 	}
 	p = result;
 	return *p;
 }
 
+unsigned long* generate_integral_set(int place_of_A, unsigned char c) {
+	if (place_of_A > 7) {
+		place_of_A = 7;
+	}
+	place_of_A = 7 - place_of_A;
+
+	unsigned long* res = (unsigned long*)calloc(256, sizeof(long));
+	unsigned char vector[8] = {0};
+	for (int i = 0; i < 8; ++i) {
+		vector[i] = c;
+	}
+
+	for (int i = 0; i < 0xff + 1; ++i){
+		vector[place_of_A] = i;
+		res[i] = *(unsigned long*)vector;
+	}
+	return  res;
+}
+
+void sort(unsigned char* arr, int length) {
+	int is_swap = 0;
+	for (int i = 0; i < length - 1; ++i) {
+		is_swap = 0;
+		for (int j = 0; j < length - i - 1; ++j) {
+			if (arr[j] > arr[j + 1]){
+				unsigned char tmp = arr[j];
+				arr[j] = arr[j + 1];
+				arr[j + 1] = tmp;
+				is_swap = 1;
+			}
+		}
+		if (is_swap == 0) {
+			break;
+		}
+	}
+}
+
+char determine_integral_property(int place, unsigned long* texts) {
+	unsigned char set[256] = {0};
+	if (place > 7) {
+		place = 7;
+	}
+	for (int i = 0; i < 256; ++i) {
+		set[i] = (unsigned char)(texts[i] >> (8*(7 - place)));
+	}
+	sort(set, 256);
+	if (is_all(set, 256)) {
+		return 'A';
+	} else if (is_constant(set, 256)) {
+		return 'C';
+	} else if (is_zerosum(set, 256)) {
+		return 'S';
+	} else {
+		/*
+		for (int i = 0 ; i < 256; ++i) {
+			printf("%02x ", set[i]);
+		}
+		printf("\n");*/
+		return 'U'; // unknown
+	}
+
+}
+
+int is_constant(unsigned char* set, int size) {
+	unsigned char l = set[0];
+	for (int i = 1; i < size; ++i) {
+		if (set[i] != l) {
+			return 0; // false
+		}
+	}
+	return 1; // true
+}
+
+int is_all(unsigned char* set, int size) {
+	unsigned char prev = set[0];
+	for (int i = 1; i < size; ++i) {
+		if (set[i] != prev + 1) {
+			return 0; // false
+		}
+		prev = set[i];
+	}
+	return 1; // true
+}
+
+int is_zerosum(unsigned char* set, int size) {
+	unsigned char res = set[0];
+	for (int i = 1; i < size; ++i) {
+		res ^= set[i];
+	}
+	if (res == 0) {
+		return 1; // true
+	} else {
+		return 0; //false
+	}
+}
+
+
+void one_round_crypt(unsigned long* texts, int size, unsigned long key, int mode){
+	for (int i = 0; i < size; ++i) {
+		if (mode & 1) {
+			texts[i] = key ^ texts[i];
+		}
+		if (mode & 2) {
+			texts[i] = sbox(texts[i]);
+		}
+		if (mode & 4) {
+			texts[i] = theta(texts[i]);
+		}
+	}
+}
+
+
+
 
 int main() {
-	unsigned long key = 6788888;
-	unsigned char text[8] = {0, 5, 5, 5, 5, 5, 5, 5};
-	unsigned long* p;
+	unsigned long key = 0;
+	for (int place = 0; place < 7; ++place) {
+		unsigned long *integr_set = generate_integral_set(place, 5);
+		for (int round = 1; round <= 3; ++round) {
+			one_round_crypt(integr_set, 256, key, 7);
 
-	unsigned long texts[256] = {0};
-	unsigned long sum = 0;
-
-	p = text;
-	for(int i = 0; i < 256; ++i){
-		text[0] = i;
-		texts[i] = *p;
-	}
-	
-	p = text;
-	for (int t = 0; t < 256; ++t) {
- 		*p = texts[t];
-		for(int i = 0; i < 3; ++i) {
-			for(int j = 0; j < 8; ++j) {
-				text[j] = sbox(text[j]);
+			for (int i = 0; i < 16; ++i) {
+				char c = determine_integral_property(i, integr_set);
+				printf("%c ", c);
 			}
-			*p = theta(*p);
-			*p = *p ^ key;
+			printf("\n");
 		}
-		//printf("%d\n", text[1]);
-		texts[t] = *p;
+		printf("\n");
 	}
-
-	long* key_p;
-	unsigned char real_key[8] = {0};
-	key_p = real_key;
-	*key_p = key;
-	unsigned char round_key[8] = {0};
-	key_p = round_key;
-
-	for (int i = 0; i < 8; ++i) {
-		for (int j = 0; j < 256; ++j) {
-			round_key[i] = j;
-			key = *key_p;
-
-			p = text;
-			for (int t = 0; t < 256; ++t) {
-				*p = texts[t];
-
-				*p = *p ^ key;
-				*p = theta(*p);
-
-				for(int j = 0; j < 8; ++j) {
-					text[j] = sbox(text[j]);
-				}
-
-
-				//printf("%d\n", text[1]);
-				texts[t] = *p;
-			}
-
-		}
-	}
-
-	 for(int i = 0; i < 3; ++i) {
-		 *p = *p ^ key1;
-		 for(int j = 0; j < 3; ++j) {
-		 text[j] = sbox(text[j]);
-		 }
-	 //*p = *p ^ key;
- 	}
-	for(int i = 0; i < 256; ++i) {
-		sum ^= texts[i];
-	}
-	printf("sum = %d\n", sum);
-
 }
 
 
